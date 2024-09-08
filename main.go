@@ -1,8 +1,9 @@
 package main
 
 import (
-	"io"
 	"net"
+
+	resp "github.com/NyanLinHtet99/simple-redis-clone/RESP"
 )
 
 func main() {
@@ -16,14 +17,12 @@ func main() {
 	}
 	defer conn.Close()
 	for {
-		buf := make([]byte, 1024)
-		_, err := conn.Read(buf)
+		res := resp.NewResp(conn)
+		_, err := res.Read()
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
 			panic(err)
 		}
-		conn.Write([]byte("+OK\r\n"))
+		writer := resp.NewWriter(conn)
+		writer.Write(resp.Value{Typ: "string", Str: "OK"})
 	}
 }
