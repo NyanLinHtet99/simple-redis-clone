@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"net"
+	"strings"
 
 	resp "github.com/NyanLinHtet99/simple-redis-clone/RESP"
 )
@@ -18,11 +20,29 @@ func main() {
 	defer conn.Close()
 	for {
 		res := resp.NewResp(conn)
-		_, err := res.Read()
+		value, err := res.Read()
 		if err != nil {
-			panic(err)
+			fmt.Println(err.Error())
+			continue
 		}
+		if value.Typ != "array" {
+			fmt.Println("Invalid request, expected array")
+			continue
+		}
+		if len(value.Array) == 0 {
+			fmt.Println("Invalid request, expected command length > 0")
+			continue
+		}
+		command := strings.ToUpper(value.Array[0].Bulk)
+		args := value.Array[1:]
 		writer := resp.NewWriter(conn)
-		writer.Write(resp.Value{Typ: "string", Str: "OK"})
+		handler, ok := resp.Handlers[command]
+		if !ok {
+			fmt.Println("Invalid command: ", command)
+			writer.Write(resp.Value{Typ: "string", Str: ""})
+			continue
+		}
+		result := handler(args)
+		writer.Write(result)
 	}
 }
